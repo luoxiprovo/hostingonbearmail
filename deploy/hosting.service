@@ -1,0 +1,19 @@
+[Unit]
+Description=Hosting control plane
+After=network.target caddy.service
+
+[Service]
+Type=simple
+User=luoxi23vr
+Group=luoxi23vr
+WorkingDirectory=/home/luoxi23vr/hosting
+ExecStart=/usr/bin/node /home/luoxi23vr/hosting/dist/server.js
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOSTING_DATA_DIR=/home/luoxi23vr/hosting-data
+Environment=NODE_OPTIONS=--dns-result-order=ipv4first
+
+[Install]
+WantedBy=multi-user.target
