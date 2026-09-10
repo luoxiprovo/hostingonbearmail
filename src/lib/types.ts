@@ -12,6 +12,18 @@ export const DEFAULT_AUTO_DEPLOY_INTERVAL_MIN = 5;
 export const MIN_AUTO_DEPLOY_INTERVAL_MIN = 1;
 export const MAX_AUTO_DEPLOY_INTERVAL_MIN = 1440;
 
+export interface DnsRecord {
+  type: "A" | "AAAA";
+  name: string;
+  value: string;
+}
+
+export interface ProjectDns {
+  ipv4: string | null;
+  ipv6: string | null;
+  records: DnsRecord[];
+}
+
 export interface Project {
   name: string;
   gitUrl: string;
@@ -35,6 +47,7 @@ export interface Project {
   runtimeRoot: string | null;
   createdAt: string;
   updatedAt: string;
+  dns?: ProjectDns;
 }
 
 export interface ProjectRecord extends Project {
@@ -77,7 +90,11 @@ export const DEFAULT_SETTINGS: Settings = {
   portRangeStart: 4100,
 };
 
-export function publicProject(record: ProjectRecord): Project {
+export function publicProject(record: ProjectRecord, dns?: ProjectDns): Project {
   const { gitToken: _token, lastAutoAttemptSha: _attempt, ...rest } = normalizeRecord(record);
-  return { ...rest, gitTokenSet: Boolean(record.gitToken) };
+  return {
+    ...rest,
+    gitTokenSet: Boolean(record.gitToken),
+    dns: dns ?? { ipv4: null, ipv6: null, records: [] },
+  };
 }

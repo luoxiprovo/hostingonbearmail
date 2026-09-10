@@ -48,7 +48,7 @@ Submit clones the repo. **Deploy** is a separate step (pull, build, start).
 
 Private repos: paste a GitHub personal access token on the project.
 
-DNS: point the domain at this server; Hosting reloads Caddy. Optional Let’s Encrypt email is in Settings.
+DNS: after deploy, the dashboard and CLI show the A/AAAA records to add. Hosting reloads Caddy. Optional Let’s Encrypt email is in Settings.
 
 ## Run
 

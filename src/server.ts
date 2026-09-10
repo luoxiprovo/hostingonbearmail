@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createApi, errorHandler } from "./api.js";
 import { syncCaddy } from "./lib/caddy.js";
 import { startAutoDeployPoller } from "./lib/auto-deploy.js";
+import { getPublicIps } from "./lib/dns.js";
 import { resumeRunningProjects } from "./lib/deploy.js";
 import { stopProject } from "./lib/process-manager.js";
 import { getSettings, initStore, listRecords } from "./lib/store.js";
@@ -20,6 +21,7 @@ export async function startServer(): Promise<void> {
   }
   await resumeRunningProjects();
   startAutoDeployPoller();
+  void getPublicIps().catch(() => undefined);
 
   const app = express();
   app.disable("x-powered-by");

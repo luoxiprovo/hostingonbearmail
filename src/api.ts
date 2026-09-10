@@ -20,6 +20,7 @@ import {
   publicProject,
   type ProjectRecord,
 } from "./lib/types.js";
+import { dnsRecordsFor, getPublicIps, projectDns } from "./lib/dns.js";
 import {
   HttpError,
   assertAutoDeployIntervalMin,
@@ -41,15 +42,20 @@ function busy(record: ProjectRecord): boolean {
   return record.status === "cloning" || record.status === "building";
 }
 
+async function jsonProject(record: ProjectRecord) {
+  return publicProject(record, await projectDns(record.domain));
+}
+
 export function createApi(): Router {
   const router = Router();
 
   router.get("/health", async (_req, res) => {
-    const caddy = await caddyStatus();
+    const [caddy, publicIp] = await Promise.all([caddyStatus(), getPublicIps()]);
     res.json({
       ok: true,
       bind: `${getSettings().bindHost}:${getSettings().bindPort}`,
       caddy,
+      publicIp,
       projects: listRecords().length,
     });
   });
@@ -70,8 +76,21 @@ export function createApi(): Router {
     }
   });
 
-  router.get("/projects", (_req, res) => {
-    res.json(listRecords().map(publicProject));
+  router.get("/projects", async (_req, res, next) => {
+    try {
+      const ips = await getPublicIps();
+      res.json(
+        listRecords().map((record) =>
+          publicProject(record, {
+            ipv4: ips.ipv4,
+            ipv6: ips.ipv6,
+            records: dnsRecordsFor(record.domain, ips),
+          }),
+        ),
+      );
+    } catch (err) {
+      next(err);
+    }
   });
 
   router.post("/projects", async (req, res, next) => {
@@ -127,7 +146,7 @@ export function createApi(): Router {
       const { ensureProjectLayout } = await import("./lib/paths.js");
       await ensureProjectLayout(name);
       await syncCaddy(listRecords(), getSettings());
-      res.status(201).json(publicProject(record));
+      res.status(201).json(await jsonProject(record));
       void cloneProject(name).catch((err) => {
         console.error(`clone ${name}:`, err);
       });
@@ -136,11 +155,11 @@ export function createApi(): Router {
     }
   });
 
-  router.get("/projects/:name", (req, res, next) => {
+  router.get("/projects/:name", async (req, res, next) => {
     try {
       const record = getRecord(projectName(req));
       if (!record) throw new HttpError(404, "Project not found");
-      res.json(publicProject(record));
+      res.json(await jsonProject(record));
     } catch (err) {
       next(err);
     }
@@ -194,7 +213,7 @@ export function createApi(): Router {
       record.updatedAt = nowIso();
       await upsertRecord(record);
       await syncCaddy(listRecords(), getSettings());
-      res.json(publicProject(record));
+      res.json(await jsonProject(record));
     } catch (err) {
       next(err);
     }
@@ -220,7 +239,8 @@ export function createApi(): Router {
       const record = getRecord(projectName(req));
       if (!record) throw new HttpError(404, "Project not found");
       if (busy(record)) throw new HttpError(409, "Project is already cloning or deploying");
-      res.status(202).json({ ok: true });
+      const dns = await projectDns(record.domain);
+      res.status(202).json({ ok: true, dns });
       void deployProject(record.name).catch((err) => {
         console.error(`deploy ${record.name}:`, err);
       });
@@ -234,7 +254,7 @@ export function createApi(): Router {
       const record = getRecord(projectName(req));
       if (!record) throw new HttpError(404, "Project not found");
       await stopProject(record.name);
-      res.json(publicProject(getRecord(record.name)!));
+      res.json(await jsonProject(getRecord(record.name)!));
     } catch (err) {
       next(err);
     }
@@ -251,7 +271,7 @@ export function createApi(): Router {
         throw new HttpError(409, "Deploy this project once before starting it");
       }
       await startProject(record, command, cwd);
-      res.json(publicProject(getRecord(record.name)!));
+      res.json(await jsonProject(getRecord(record.name)!));
     } catch (err) {
       next(err);
     }

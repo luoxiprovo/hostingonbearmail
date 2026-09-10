@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api, type Health, type Project, type Settings } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { api, type Health, type Project, type ProjectDns, type Settings } from "./api";
 
 type View =
   | { page: "home" }
@@ -345,6 +345,115 @@ function NewProject({ go }: { go: (v: View) => void }) {
   );
 }
 
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn ghost copy-btn"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const el = document.createElement("textarea");
+          el.value = text;
+          document.body.appendChild(el);
+          el.select();
+          document.execCommand("copy");
+          el.remove();
+        }
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      }}
+    >
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
+function zoneSnippet(dns?: ProjectDns): string {
+  return (dns?.records ?? []).map((r) => `${r.name}.  IN ${r.type}  ${r.value}`).join("\n");
+}
+
+function DnsPanel({ project, highlight }: { project: Project; highlight: boolean }) {
+  const dns = project.dns;
+  const records = dns?.records ?? [];
+
+  if (!project.domain) {
+    if (!highlight) return null;
+    return (
+      <div className={`card dns-card ${highlight ? "highlight" : ""}`} style={{ marginBottom: 14 }}>
+        <h3>DNS records</h3>
+        <p className="help" style={{ marginBottom: 0 }}>
+          This app is at <code>http://127.0.0.1:{project.port}/</code>. Set a domain in Settings,
+          then add an A record pointing at this server
+          {dns?.ipv4 ? (
+            <>
+              {" "}
+              (<code>{dns.ipv4}</code>)
+            </>
+          ) : (
+            ""
+          )}
+          {dns?.ipv6 ? (
+            <>
+              {" "}
+              and AAAA <code>{dns.ipv6}</code>
+            </>
+          ) : (
+            ""
+          )}
+          .
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`card dns-card ${highlight ? "highlight" : ""}`} style={{ marginBottom: 14 }}>
+      <div className="dns-head">
+        <h3>DNS records</h3>
+        {records.length > 0 && <CopyButton text={zoneSnippet(dns)} label="Copy all" />}
+      </div>
+      <p className="help">
+        Add these at your DNS provider so <code>https://{project.domain}</code> reaches this server.
+        HTTPS certificates issue after the names resolve here.
+      </p>
+      {records.length === 0 ? (
+        <p className="help" style={{ marginBottom: 0 }}>
+          Could not detect this server’s public IP. Set <code>HOSTING_PUBLIC_IPV4</code> (and{" "}
+          <code>HOSTING_PUBLIC_IPV6</code> if you have one) on the Hosting process.
+        </p>
+      ) : (
+        <div className="dns-table-wrap">
+          <table className="dns-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Value</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={`${r.type}-${r.name}-${r.value}`}>
+                  <td>{r.type}</td>
+                  <td>{r.name}</td>
+                  <td>{r.value}</td>
+                  <td>
+                    <CopyButton text={r.value} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProjectDetail({
   name,
   project,
@@ -360,6 +469,8 @@ function ProjectDetail({
   const [log, setLog] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [highlightDns, setHighlightDns] = useState(false);
+  const prevStatus = useRef(project?.status);
   const [draft, setDraft] = useState({
     name: "",
     domain: "",
@@ -374,6 +485,19 @@ function ProjectDetail({
     autoDeploy: false,
     autoDeployIntervalMin: "5",
   });
+
+  useEffect(() => {
+    setHighlightDns(false);
+    prevStatus.current = project?.status;
+  }, [name]);
+
+  useEffect(() => {
+    const prev = prevStatus.current;
+    prevStatus.current = project?.status;
+    if (prev === "building" && project?.status === "running") {
+      setHighlightDns(true);
+    }
+  }, [project?.status]);
 
   useEffect(() => {
     if (!project) return;
@@ -456,7 +580,12 @@ function ProjectDetail({
           <button
             className="btn primary"
             disabled={Boolean(busy) || Boolean(busyStatus)}
-            onClick={() => action("deploy", () => api.deploy(project.name))}
+            onClick={() =>
+              action("deploy", async () => {
+                await api.deploy(project.name);
+                setHighlightDns(true);
+              })
+            }
           >
             {busy === "deploy" || project.status === "building" ? "Deploying…" : "Deploy"}
           </button>
@@ -476,6 +605,8 @@ function ProjectDetail({
       {project.lastError && project.status === "error" && (
         <div className="error-banner">{project.lastError}</div>
       )}
+
+      <DnsPanel project={project} highlight={highlightDns} />
 
       <div className="grid">
         <div className="card">

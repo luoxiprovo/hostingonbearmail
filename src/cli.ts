@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { formatDnsRecords, type ProjectDns } from "./lib/dns.js";
 import { startServer } from "./server.js";
 import { getSettings, initStore } from "./lib/store.js";
 
@@ -31,6 +32,28 @@ Usage:
   hosting status
   hosting doctor
 `;
+}
+
+function printDnsHint(domain: string, dns?: ProjectDns): void {
+  if (!dns) return;
+  if (!domain) {
+    if (dns.ipv4 || dns.ipv6) {
+      console.log("");
+      console.log("No domain set. After you add one, point its A/AAAA records at this server:");
+      if (dns.ipv4) console.log(`  A     <your-domain>        ${dns.ipv4}`);
+      if (dns.ipv6) console.log(`  AAAA  <your-domain>        ${dns.ipv6}`);
+    }
+    return;
+  }
+  if (dns.records.length === 0) {
+    console.log("");
+    console.log(`Domain ${domain} is set, but this server's public IP could not be detected.`);
+    console.log("Set HOSTING_PUBLIC_IPV4 (and HOSTING_PUBLIC_IPV6 if you have one), then retry.");
+    return;
+  }
+  console.log("");
+  console.log("Add these DNS records so HTTPS can be issued:");
+  console.log(formatDnsRecords(dns.records));
 }
 
 async function api<T>(pathname: string, init: RequestInit = {}): Promise<T> {
@@ -123,7 +146,7 @@ async function main(): Promise<void> {
     }
     case "add": {
       if (!name || !values.repo) throw new Error("usage: hosting add <name> --repo <url>");
-      const project = await api("/api/projects", {
+      const project = await api<{ domain?: string; dns?: ProjectDns }>("/api/projects", {
         method: "POST",
         body: JSON.stringify({
           name,
@@ -140,13 +163,22 @@ async function main(): Promise<void> {
       });
       console.log("Created. Cloning in the background.");
       console.log(JSON.stringify(project, null, 2));
+      printDnsHint(project.domain || String(values.domain || ""), project.dns);
       return;
     }
-    case "deploy":
+    case "deploy": {
       if (!name) throw new Error("usage: hosting deploy <name>");
-      await api(`/api/projects/${encodeURIComponent(name)}/deploy`, { method: "POST" });
+      const result = await api<{ ok: boolean; dns?: ProjectDns }>(
+        `/api/projects/${encodeURIComponent(name)}/deploy`,
+        { method: "POST" },
+      );
       console.log(`Deploy started for ${name}. Watch: hosting logs ${name}`);
+      const project = await api<{ domain?: string; dns?: ProjectDns }>(
+        `/api/projects/${encodeURIComponent(name)}`,
+      ).catch(() => ({ domain: "", dns: result.dns }));
+      printDnsHint(project.domain || "", result.dns || project.dns);
       return;
+    }
     case "start":
       if (!name) throw new Error("usage: hosting start <name>");
       console.log(JSON.stringify(await api(`/api/projects/${encodeURIComponent(name)}/start`, { method: "POST" }), null, 2));

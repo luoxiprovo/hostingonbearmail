@@ -150,7 +150,7 @@ example.com {
 
 Hosting **replaces** the system Caddyfile. This machine’s public HTTP/HTTPS is whatever Hosting generated.
 
-The operator must point DNS A/AAAA at this server before certificates can be issued. ACME email is optional (Settings).
+The operator must point DNS A/AAAA at this server before certificates can be issued. After deploy (and whenever a domain is set), the dashboard and CLI show the exact records, using this server’s public IP. ACME email is optional (Settings). Override the detected IP with `HOSTING_PUBLIC_IPV4` / `HOSTING_PUBLIC_IPV6` if needed.
 
 ### 8.5 `.env`
 
@@ -162,11 +162,11 @@ Base: `http://127.0.0.1:8787/api`
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/health` | Caddy status, bind, project count |
+| GET | `/health` | Caddy status, bind, public IP, project count |
 | GET/PATCH | `/settings` | PATCH accepts `acmeEmail` |
 | GET/POST | `/projects` | POST creates and starts clone |
 | GET/PATCH/DELETE | `/projects/:name` | PATCH `name` renames the project and folder |
-| POST | `/projects/:name/deploy` | 202, work in background |
+| POST | `/projects/:name/deploy` | 202, work in background; body includes `dns` records to add |
 | POST | `/projects/:name/start` | |
 | POST | `/projects/:name/stop` | |
 | GET | `/projects/:name/logs?kind=deploy\|runtime` | tail, ~200 KB |

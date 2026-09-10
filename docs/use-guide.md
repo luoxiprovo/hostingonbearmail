@@ -82,6 +82,8 @@ Deploy will:
 
 Then status should become **running**. Open `http://127.0.0.1:<port>/` from the server (or an SSH tunnel to that port).
 
+If the project has a domain, the dashboard shows the **DNS records** to add (A/AAAA for the domain and `www`). The CLI prints the same table after `hosting deploy` and `hosting add`.
+
 ```bash
 hosting logs landing                 # deploy log
 hosting logs landing --kind runtime  # process output
@@ -113,12 +115,17 @@ Typical: Express/Fastify, Next in server mode, a small API.
 
 ## 6. Domains and HTTPS
 
-1. In DNS, point `app.example.com` **A/AAAA** at this server’s public IP.
-2. Set **Domain** on the project (dashboard Save settings, or `hosting add … --domain app.example.com`).
+1. Set **Domain** on the project (dashboard Save settings, or `hosting add … --domain app.example.com`).
+2. After Deploy, copy the **DNS records** from the project page (or the CLI output) into your DNS provider. Typical rows:
+   - `A` `app.example.com` → this server’s public IPv4
+   - `A` `www.app.example.com` → same IPv4
+   - `AAAA` as well if the server has a public IPv6
 3. Hosting rewrites Caddy and reloads it.
 4. Optional: dashboard **Settings** → ACME email for Let’s Encrypt.
 
 Until DNS points here, certificate issuance will fail. You can still use `http://127.0.0.1:<port>/` locally.
+
+If the detected IP is wrong (NAT, extra NIC), set `HOSTING_PUBLIC_IPV4` and/or `HOSTING_PUBLIC_IPV6` on the Hosting process.
 
 Caddy proxies:
 

@@ -1,6 +1,18 @@
 export type ProjectType = "static" | "node";
 export type ProjectStatus = "idle" | "cloning" | "building" | "running" | "stopped" | "error";
 
+export interface DnsRecord {
+  type: "A" | "AAAA";
+  name: string;
+  value: string;
+}
+
+export interface ProjectDns {
+  ipv4: string | null;
+  ipv6: string | null;
+  records: DnsRecord[];
+}
+
 export interface Project {
   name: string;
   gitUrl: string;
@@ -22,12 +34,14 @@ export interface Project {
   pid: number | null;
   createdAt: string;
   updatedAt: string;
+  dns?: ProjectDns;
 }
 
 export interface Health {
   ok: boolean;
   bind: string;
   caddy: { installed: boolean; active: boolean; version: string };
+  publicIp?: { ipv4: string | null; ipv6: string | null };
   projects: number;
 }
 
@@ -68,7 +82,9 @@ export const api = {
   remove: (name: string) =>
     request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(name)}`, { method: "DELETE" }),
   deploy: (name: string) =>
-    request<{ ok: boolean }>(`/api/projects/${encodeURIComponent(name)}/deploy`, { method: "POST" }),
+    request<{ ok: boolean; dns: ProjectDns }>(`/api/projects/${encodeURIComponent(name)}/deploy`, {
+      method: "POST",
+    }),
   start: (name: string) =>
     request<Project>(`/api/projects/${encodeURIComponent(name)}/start`, { method: "POST" }),
   stop: (name: string) =>

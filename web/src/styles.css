@@ -332,6 +332,53 @@ textarea {
   box-shadow: var(--shadow);
 }
 
+.dns-card.highlight {
+  border-color: #6b7a3a;
+  box-shadow: 0 0 0 1px rgba(214, 242, 106, 0.22);
+}
+.dns-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.dns-head h3 { margin: 0; }
+.dns-table-wrap { overflow-x: auto; }
+.dns-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.dns-table th {
+  text-align: left;
+  color: var(--faint);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.dns-table td {
+  padding: 8px 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+  word-break: break-all;
+  vertical-align: middle;
+}
+.dns-table td:last-child,
+.dns-table th:last-child {
+  text-align: right;
+  padding-right: 0;
+  width: 1%;
+  white-space: nowrap;
+}
+.copy-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
   .rail { min-height: auto; }
