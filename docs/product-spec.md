@@ -40,7 +40,7 @@ One operator who controls this server (SSH, sudo, DNS). They open the dashboard 
 | How you operate it | Dashboard + CLI |
 | How repos arrive | Paste a clone URL; optional GitHub PAT for private repos |
 | When a project updates | After Submit (clone) and a separate Deploy button / `hosting deploy` |
-| Domains and HTTPS | Hosting owns Caddy; operator points DNS at the server |
+| Domains and HTTPS | Reuse the system Caddy. Hosting adds its sites beside existing ones (Bearmail). Operator points DNS at the server |
 | Who can open the dashboard | Localhost only, no auth |
 
 ## 6. Product surface
@@ -94,7 +94,7 @@ Clone and deploy cannot overlap on the same project. Delete is refused while clo
 ```text
 $HOSTING_DATA_DIR/             # default: /home/luoxi23vr/hosting-data
   hosting.json                 # settings + project records (token stored here)
-  caddy/Caddyfile              # generated, then copied to /etc/caddy/Caddyfile
+  caddy/hosting.caddy          # generated snippet, installed to /etc/caddy/hosting.caddy
   projects/<name>/
     repo/                      # git clone
     .env                       # operator-owned; copied into repo on clone/deploy
@@ -137,18 +137,24 @@ Install/build timeout: 60 minutes. Port-ready wait: 60 seconds. If a command fin
 
 ### 8.4 Domains
 
-On create, patch, delete, or ACME email change, Hosting writes a Caddyfile, `caddy validate`s it, copies it to `/etc/caddy/Caddyfile`, and reloads Caddy.
+On create, patch, delete, or ACME email change, Hosting writes `/etc/caddy/hosting.caddy`, ensures `/etc/caddy/Caddyfile` imports that file, `caddy validate`s the merged config, and reloads Caddy. Existing site blocks (Bearmail’s mail hostnames) stay in the system Caddyfile. A domain that is already used there is rejected.
 
-Each domain block:
+Each Hosting domain block:
 
 ```caddyfile
-example.com {
+example.com, www.example.com {
     encode gzip
     reverse_proxy 127.0.0.1:<port>
 }
 ```
 
-Hosting **replaces** the system Caddyfile. This machine’s public HTTP/HTTPS is whatever Hosting generated.
+The system Caddyfile keeps a marked block:
+
+```caddyfile
+# BEGIN hosting
+import /etc/caddy/hosting.caddy
+# END hosting
+```
 
 The operator must point DNS A/AAAA at this server before certificates can be issued. After deploy (and whenever a domain is set), the dashboard and CLI show the exact records, using this server’s public IP. ACME email is optional (Settings). Override the detected IP with `HOSTING_PUBLIC_IPV4` / `HOSTING_PUBLIC_IPV6` if needed.
 
@@ -179,7 +185,7 @@ JSON errors: `{ "error": "…" }` with 4xx/5xx.
 - Process: `systemd` unit `hosting.service` (`User=luoxi23vr`, `ExecStart=/usr/bin/node …/dist/server.js`).
 - Dashboard bind: `HOSTING_HOST` / `HOSTING_PORT` or settings (`127.0.0.1:8787`).
 - CLI default API: `HOSTING_URL` or `http://127.0.0.1:8787`.
-- Requires: `git`, `node`, `npm`, `caddy`, passwordless `sudo` for Caddy reload.
+- Requires: `git`, `node`, `npm`, `caddy`, passwordless `sudo` to install `/etc/caddy/hosting.caddy` and reload Caddy.
 
 ## 11. Security posture (v1)
 

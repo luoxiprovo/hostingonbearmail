@@ -43,7 +43,7 @@ Submit clones the repo. **Deploy** is a separate step (pull, build, start).
     .env      # edited in the dashboard; copied into repo on deploy
     logs/     # deploy.log, runtime.log
   hosting.json
-  caddy/Caddyfile   # copied to /etc/caddy/Caddyfile on change
+  caddy/hosting.caddy   # imported by /etc/caddy/Caddyfile; Bearmail sites stay put
 ```
 
 Private repos: paste a GitHub personal access token on the project.

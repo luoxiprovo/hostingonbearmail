@@ -15,8 +15,8 @@ export function storePath(): string {
   return path.join(dataDir(), "hosting.json");
 }
 
-export function caddyfilePath(): string {
-  return path.join(dataDir(), "caddy", "Caddyfile");
+export function caddySnippetPath(): string {
+  return path.join(dataDir(), "caddy", "hosting.caddy");
 }
 
 export function projectDir(name: string): string {

@@ -23,6 +23,7 @@ import {
 import { dnsRecordsFor, getPublicIps, projectDns } from "./lib/dns.js";
 import {
   HttpError,
+  assertAcmeEmail,
   assertAutoDeployIntervalMin,
   assertDomain,
   assertGitUrl,
@@ -67,7 +68,7 @@ export function createApi(): Router {
   router.patch("/settings", async (req, res, next) => {
     try {
       const patch: { acmeEmail?: string } = {};
-      if (typeof req.body?.acmeEmail === "string") patch.acmeEmail = req.body.acmeEmail.trim();
+      if (typeof req.body?.acmeEmail === "string") patch.acmeEmail = assertAcmeEmail(req.body.acmeEmail);
       const settings = await saveSettings(patch);
       await syncCaddy(listRecords(), settings);
       res.json(settings);

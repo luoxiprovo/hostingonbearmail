@@ -120,8 +120,8 @@ Typical: Express/Fastify, Next in server mode, a small API.
    - `A` `app.example.com` → this server’s public IPv4
    - `A` `www.app.example.com` → same IPv4
    - `AAAA` as well if the server has a public IPv6
-3. Hosting rewrites Caddy and reloads it.
-4. Optional: dashboard **Settings** → ACME email for Let’s Encrypt.
+3. Hosting adds that site to the Caddy Bearmail already installed, then reloads Caddy. Bearmail’s hostnames stay in place.
+4. Optional: dashboard **Settings** → ACME email for Let’s Encrypt. One Caddy instance has one ACME email.
 
 Until DNS points here, certificate issuance will fail. You can still use `http://127.0.0.1:<port>/` locally.
 
@@ -131,7 +131,15 @@ Caddy proxies:
 
 `https://app.example.com` → `127.0.0.1:<project-port>`
 
-Hosting **owns** `/etc/caddy/Caddyfile`. Don’t edit that file by hand; change the project domain instead.
+Hosting does not replace `/etc/caddy/Caddyfile`. It writes `/etc/caddy/hosting.caddy` and keeps this import in the system file:
+
+```caddyfile
+# BEGIN hosting
+import /etc/caddy/hosting.caddy
+# END hosting
+```
+
+Change a Hosting domain in the dashboard or CLI. Leave the Bearmail site blocks alone. A domain Bearmail already serves is rejected (`ambiguous site definition`).
 
 ## 7. Day-to-day
 
@@ -185,6 +193,9 @@ The process started but did not listen on `PORT`. For Node apps, bind `process.e
 
 **Site works on the port, not on the domain**
 DNS is not pointing here yet, or Caddy failed to reload. `hosting status` shows whether Caddy is active. Confirm the domain field and wait for TLS.
+
+**Save failed: ambiguous site definition**
+That hostname is already in the system Caddyfile (for example a Bearmail name). Use a different domain.
 
 **`.env` changes have no effect**
 Save, then **Deploy** or **Start**.

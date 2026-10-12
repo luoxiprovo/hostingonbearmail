@@ -1,6 +1,7 @@
 const NAME_RE = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const DOMAIN_RE =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
+const ACME_EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
 export function assertName(name: string): string {
   const value = name.trim().toLowerCase();
@@ -10,6 +11,13 @@ export function assertName(name: string): string {
       "Name must be lowercase letters, numbers, and hyphens (start with a letter or number).",
     );
   }
+  return value;
+}
+
+export function assertAcmeEmail(email: string): string {
+  const value = email.trim();
+  if (!value) return "";
+  if (!ACME_EMAIL_RE.test(value)) throw new HttpError(400, "Invalid ACME email");
   return value;
 }
 
